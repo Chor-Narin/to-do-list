@@ -82,8 +82,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const resolvedParams = await params;
-    const id = resolvedParams.id;
+    // const resolvedParams = await params;
+    // const id = resolvedParams.id;
+    const id = (await params).id;
     if (!id) {
       return NextResponse.json({ error: "Missing ID" }, { status: 400 });
     }

@@ -4,6 +4,7 @@
 
 // import { NextRequest, NextResponse } from "next/server";
 // import { addTodo, getTodos } from "../../lib/todos";
+// import { v4 as uuidv4 } from 'uuid';
 
 
 // // GET ALL TODOS
@@ -18,15 +19,15 @@
 // }
 // // CREATE NEW TODO
 // export async function POST(req: NextRequest) {
-//   const { id, todo, isCompleted, createdAt } = await req.json();
+//   const body = await req.json();
 //   try {
-//     if (!id || !todo || isCompleted === undefined || !createdAt) {
+//     if (!body.todo || typeof body.todo !== 'string') {
 //       return NextResponse.json(
-//         { message: "Invalid request body" },
+//         { message: "Invalid request body todo" },
 //         { status: 400 }
 //       );
 //     }
-//     addTodo({ id, todo, isCompleted: isCompleted, createdAt: createdAt });
+//     addTodo({ id : uuidv4() , todo: body.todo , isCompleted: false, createdAt: new Date().toISOString()});
 //     return new NextResponse('success', { status: 201 });
 //   } catch (error) {
 //     console.error("API ERROR:", error);
@@ -42,6 +43,7 @@
 //////////////////////////////////////////////////////////////////////////////
 
 import { NextRequest, NextResponse } from "next/server";
+import { v4 as uuidv4 } from 'uuid';
 import { supabase } from "../../lib/supabase";
 
 // GET Todos
@@ -58,13 +60,13 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { id, todo, isCompleted, createdAt } = body;
-    if (!id || !todo || isCompleted === undefined || !createdAt) {
+    const {todo} = body;
+    if (!todo ) {
       return NextResponse.json("Invalid body", { status: 400 });
     }
     const { error } = await supabase
       .from("todos")
-      .insert({ id, todo, isCompleted: isCompleted, createdAt: createdAt });
+      .insert({ id: uuidv4(), todo, isCompleted: false, createdAt: new Date().toISOString() });
     if (error) return NextResponse.json(error, { status: 500 });
     return NextResponse.json("success");
   } catch (error) {
