@@ -1,0 +1,37 @@
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [main, master]         
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20        # match your local version
+
+      - name: Install dependencies
+        run: npm ci               # or yarn install --frozen-lockfile
+
+      - name: Build
+        run: npm run build
+
+      # Optional: Add tests here
+      # - name: Run tests
+      #   run: npm test
+
+      - name: Deploy to Vercel (Preview or Prod)
+        uses: amondnet/vercel-action@v25 
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}     # optional, from vercel whoami --token=...
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}  # optional but faster
+          scope: your-vercel-username-or-team   # if team
+          vercel-args: '--prod'  # remove this for preview-only on PRs 
