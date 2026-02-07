@@ -3,13 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from './lib/supabase';
+import { Todo } from './lib/todos';
 
-interface Todo {
-  id: string;
-  todo: string;
-  isCompleted: boolean;
-  createdAt: string;
-}
+// interface Todo {
+//   id: string;
+//   todo: string;
+//   isCompleted: boolean;
+//   createdAt: string;
+// }
 
 type FilterType = 'all' | 'completed' | 'incomplete';
 
@@ -58,7 +59,7 @@ export default function Home() {
 
     const trimmed = input.trim();
     if (!trimmed) {
-      setWarning('⚠️ Todo cannot be empty');
+      setWarning('Todo cannot be empty');
       return;
     }
 
@@ -85,10 +86,7 @@ export default function Home() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            id: uuidv4(),
-            todo: trimmed,
-            isCompleted: false,
-            createdAt: new Date().toISOString(),
+            todo: trimmed
           }),
         });
       }
@@ -151,7 +149,7 @@ export default function Home() {
     });
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center p-4">
+    <main className="min-h-screen bg-linear-to-br from-indigo-100 to-purple-100 flex items-center justify-center p-4">
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-lg p-6">
         <h1 className="text-2xl font-bold text-center mb-4">
           📝 My Todo List
@@ -224,7 +222,8 @@ export default function Home() {
                 ? 'No todos yet! Add one above'
                 : filter === 'completed'
                 ? 'No completed todos '
-                : 'No incomplete todos yet!'}
+                : 'No incomplete todos yet!'
+                }
             </p>
           ) : (
             filteredTodos.map((todo) => (
@@ -243,14 +242,15 @@ export default function Home() {
                       : 'text-green-700'
                   }`}
                 >
-                  {todo.todo}
+                  {typeof todo.todo === 'string' ? todo.todo: ''}
                 </span>
 
                 <div className="absolute right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition">
                   <button
                     onClick={() => handleToggleComplete(todo)}
                     disabled={loading}
-                    className="text-xs px-3 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200 transition font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                    className={`text-xs px-3 py-1 rounded  transition font-bold disabled:opacity-50 disabled:cursor-not-allowed ${
+                      todo.isCompleted ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
                   >
                     {todo.isCompleted ? 'Mark as Incomplete' : 'Mark as Complete'}
                   </button>
