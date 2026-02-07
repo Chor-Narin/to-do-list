@@ -12,7 +12,7 @@ import { Todo } from './lib/todos';
 //   createdAt: string;
 // }
 
-type FilterType = 'all' | 'completed' | 'incomplete';
+type FilterType = 'all' | 'completed' | 'incomplete' | 'sort';
 
 export default function Home() {
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -20,7 +20,7 @@ export default function Home() {
   const [editId, setEditId] = useState<string | null>(null);
   const [warning, setWarning] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
-  const [loading, setLoading] = useState(true); 
+  const [loading, setLoading] = useState(true);
 
   // Fetch todos list from API
   const fetchTodos = async () => {
@@ -55,46 +55,53 @@ export default function Home() {
   }, []);
 
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key !== 'Enter' || loading) return;
-
-    const trimmed = input.trim();
-    if (!trimmed) {
-      setWarning('Todo cannot be empty');
-      return;
-    }
-
-    const duplicate = todos.find(
-      (t) => t.todo.toLowerCase() === trimmed.toLowerCase() && t.id !== editId
-    );
-    if (duplicate) {
-      setWarning('This todo already exists');
-      return;
-    }
-    setWarning('');
-    setLoading(true);
-
-    try {
-      if (editId) {
-        await fetch(`/api/todo/${editId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ todo: trimmed }),
-        });
-        setEditId(null);
-      } else {
-        await fetch('/api/todo', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            todo: trimmed
-          }),
-        });
-      }
+    if (e.key == 'Escape') {
+      e.preventDefault();
       setInput('');
-    } catch (error) {
-      setWarning('Failed to save todo');
-    } finally {
-      await fetchTodos(); 
+      setWarning('');
+      return;
+    }
+
+    if (e.key == 'Enter') {
+      const trimmed = input.trim();
+      if (!trimmed) {
+        setWarning('Todo cannot be empty');
+        return;
+      }
+
+      const duplicate = todos.find(
+        t => t.todo.toLowerCase() === trimmed.toLowerCase() && t.id !== editId
+      );
+      if (duplicate) {
+        setWarning('This todo already exists');
+        return;
+      }
+      setWarning('');
+      setLoading(true);
+
+      try {
+        if (editId) {
+          await fetch(`/api/todo/${editId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ todo: trimmed }),
+          });
+          setEditId(null);
+        } else {
+          await fetch('/api/todo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              todo: trimmed,
+            }),
+          });
+        }
+        setInput('');
+      } catch (error) {
+        setWarning('Failed to save todo');
+      } finally {
+        await fetchTodos();
+      }
     }
   };
 
@@ -136,29 +143,37 @@ export default function Home() {
 
   // Filter todos
   const filteredTodos = todos
-    .filter((t) => {
-      if (input) {
-        return t.todo.toLowerCase().includes(input.toLowerCase());
-      }
+    // 1. Filter by Search Input
+    .filter(t => {
+      if (input) return t.todo.toLowerCase().includes(input.toLowerCase());
       return true;
     })
-    .filter((t) => {
+    // 2. Filter by Status (Completed/Incomplete)
+    .filter(t => {
       if (filter === 'completed') return t.isCompleted;
       if (filter === 'incomplete') return !t.isCompleted;
-      return true;
+      return true; // Keep all items for 'all' or 'sort' modes
+    })
+    // 3. Sort by Date (Only if 'sort' is active)
+    .sort((a, b) => {
+      if (filter === 'sort') {
+        // Newest first: convert ISO strings to numeric timestamps
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      }
+      return 0; // Default order
     });
 
   return (
     <main className="min-h-screen bg-linear-to-br from-indigo-100 to-purple-100 flex items-center justify-center p-4">
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-lg p-6">
-        <h1 className="text-2xl font-bold text-center mb-4">
-          📝 My Todo List
-        </h1>
+        <h1 className="text-2xl font-bold text-center mb-4">📝 My Todo List</h1>
 
         <input
           type="text"
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={editId ? 'Edit todo...' : 'Add or search todo...'}
           disabled={loading}
@@ -167,6 +182,15 @@ export default function Home() {
 
         {/* Filter Buttons */}
         <div className="flex justify-center gap-3 mt-4">
+          <button
+            onClick={() => setFilter('sort')}
+            className={`px-5 py-2 rounded-lg font-medium ${
+              filter === 'sort' ? 'bg-indigo-600 text-white' : 'bg-gray-200'
+            }`}
+          >
+            Sort
+          </button>
+
           <button
             onClick={() => setFilter('all')}
             disabled={loading}
@@ -211,7 +235,7 @@ export default function Home() {
         <ul className="mt-6 space-y-3">
           {loading ? (
             <div className="flex flex-col items-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-indigo-600 mb-4"></div>
+              <div className="border-4 border-blue-400 border-t-transparent rounded-full w-12 h-12 animate-spin mb-4"></div>
               <p className="text-gray-600">Loading your todos...</p>
             </div>
           ) : filteredTodos.length === 0 ? (
@@ -219,14 +243,13 @@ export default function Home() {
               {input
                 ? 'No results — press Enter to create it!'
                 : filter === 'all'
-                ? 'No todos yet! Add one above'
-                : filter === 'completed'
-                ? 'No completed todos '
-                : 'No incomplete todos yet!'
-                }
+                  ? 'No todos yet! Add one above'
+                  : filter === 'completed'
+                    ? 'No completed todos '
+                    : 'No incomplete todos yet!'}
             </p>
           ) : (
-            filteredTodos.map((todo) => (
+            filteredTodos.map(todo => (
               <li
                 key={todo.id}
                 className={`group relative flex items-center p-4 rounded-lg transition-all ${
@@ -242,7 +265,7 @@ export default function Home() {
                       : 'text-green-700'
                   }`}
                 >
-                  {typeof todo.todo === 'string' ? todo.todo: ''}
+                  {typeof todo.todo === 'string' ? todo.todo : ''}
                 </span>
 
                 <div className="absolute right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition">
@@ -250,15 +273,22 @@ export default function Home() {
                     onClick={() => handleToggleComplete(todo)}
                     disabled={loading}
                     className={`text-xs px-3 py-1 rounded  transition font-bold disabled:opacity-50 disabled:cursor-not-allowed ${
-                      todo.isCompleted ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
+                      todo.isCompleted
+                        ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                        : 'bg-green-100 text-green-700 hover:bg-green-200'
+                    }`}
                   >
-                    {todo.isCompleted ? 'Mark as Incomplete' : 'Mark as Complete'}
+                    {todo.isCompleted
+                      ? 'Mark as Incomplete'
+                      : 'Mark as Complete'}
                   </button>
 
                   <button
                     onClick={() => handleEdit(todo)}
                     disabled={loading}
-                    className="text-xs px-3 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 transition font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                    className={`text-xs px-3 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 transition font-bold disabled:opacity-50 disabled:cursor-not-allowed ${
+                      todo.isCompleted ? 'hidden' : 'inline-block'
+                    }`}
                   >
                     Edit
                   </button>
